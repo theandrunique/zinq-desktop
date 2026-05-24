@@ -9,7 +9,7 @@
     class: className,
     ...rest
   }: Avatar.RootProps & {
-    src: string;
+    src: string | null | undefined;
     alt: string;
     fallback: string;
   } = $props();

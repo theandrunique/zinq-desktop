@@ -18,22 +18,24 @@ interface MessageBase {
   id: string;
   chat_id: string;
   author_id: string;
+  author: ChatMember;
   content: string;
   created_at: string;
   edited_at: string | null;
   attachments: Attachment[];
 }
 
-export type Message = MessageBase & (
-  | { type: "DEFAULT"; metadata: null }
-  | { type: "REPLY"; metadata: { referenced_message_id: string } }
-  | { type: "MEMBER_ADD"; metadata: { user_id: string } }
-  | { type: "MEMBER_REMOVE"; metadata: { user_id: string } }
-  | { type: "MEMBER_LEAVE"; metadata: { user_id: string } }
-  | { type: "CHAT_NAME_UPDATE"; metadata: { new_name: string } }
-  | { type: "CHAT_IMAGE_UPDATE"; metadata: { new_image: string } }
-  | { type: "CHAT_CREATE"; metadata: { chat_name: string } }
-);
+export type Message = MessageBase &
+  (
+    | { type: "DEFAULT"; metadata: null }
+    | { type: "REPLY"; metadata: { referenced_message: Message } }
+    | { type: "MEMBER_ADD"; metadata: { user: ChatMember } }
+    | { type: "MEMBER_REMOVE"; metadata: { user: ChatMember } }
+    | { type: "MEMBER_LEAVE" }
+    | { type: "CHAT_NAME_UPDATE"; metadata: { new_name: string } }
+    | { type: "CHAT_IMAGE_UPDATE"; metadata: { new_image: string } }
+    | { type: "CHAT_CREATE"; metadata: { chat_name: string } }
+  );
 
 export interface Chat {
   id: string;
@@ -42,13 +44,16 @@ export interface Chat {
   description: string | null;
   image: string | null;
   type: ChannelType;
-  lastMessage: Message | null;
+  last_message: Message | null;
+  last_read_message_id: string;
+  max_read_message_id: string;
+  unread_count: number;
   members: ChatMember[];
 }
 
 export interface ChatMember {
   user_id: string;
-  username: string | null;
-  global_name: string | null;
+  username: string;
+  global_name: string;
   avatar: string | null;
 }

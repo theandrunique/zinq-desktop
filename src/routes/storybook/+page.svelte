@@ -12,6 +12,8 @@
     Textarea,
     Tooltip,
   } from "@/components/ui";
+  import { ChatCard } from "@/components/ChatCard";
+  import { testChats } from "@/stories/test-data";
 
   let inputValue = $state("");
   let textareaValue = $state("");
@@ -19,6 +21,7 @@
   let selectValue = $state("");
   let sliderValue = $state(50);
   let switchChecked = $state(false);
+
   let selectItems = $state([
     { value: "apple", label: "Apple" },
     { value: "banana", label: "Some Big Banana" },
@@ -43,7 +46,7 @@
         alt="User avatar"
         fallback="A"
       />
-      <Avatar src="invalidlink" alt="User avatar" fallback="A" />
+      <Avatar alt="User avatar" fallback="A" />
     </div>
   </section>
 
@@ -249,7 +252,10 @@
 
   <section class="mb-8">
     <h2 class="mb-4 text-lg font-semibold">Chat list</h2>
-    <div class="flex max-w-72 flex-col gap-4">
+    <div class="flex max-w-80 flex-col">
+      {#each testChats as chat (chat.id)}
+        <ChatCard {chat} currentUserId="user_self" />
+      {/each}
     </div>
   </section>
 </div>
