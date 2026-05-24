@@ -1,1 +1,70 @@
 @import "tailwindcss";
+
+:root {
+  /* === GRAY scale (1=darkest, 15=lightest) === */
+  --gray-1: #0e0e10;
+  --gray-2: #18181b;
+  --gray-3: #1f1f23;
+  --gray-4: #26262c;
+  --gray-5: #323239;
+  --gray-6: #3b3b44;
+  --gray-7: #53535f;
+  --gray-8: #848494;
+  --gray-9: #adadb8;
+  --gray-10: #c8c8d0;
+  --gray-11: #d3d3d9;
+  --gray-12: #dedee3;
+  --gray-13: #e6e6ea;
+  --gray-14: #efeff1;
+  --gray-15: #f7f7f8;
+
+  /* === PURPLE scale (1=darkest, 15=lightest) === */
+  --purple-1: #040109;
+  --purple-7: #5c16c5;
+  --purple-8: #772ce8;
+  --purple-9: #9147ff;
+  --purple-10: #a970ff;
+  --purple-11: #bf94ff;
+
+  /* === RADIUS === */
+  --radius: 0.4rem;
+
+  /* === SEMANTIC === */
+  --color-bg: var(--gray-2);
+  --color-bg-page: var(--gray-1);
+  --color-bg-input: var(--gray-2);
+  --color-bg-input-hover: var(--gray-3);
+  --color-bg-tooltip: var(--gray-15);
+  --color-bg-overlay: rgba(0, 0, 0, 0.75);
+
+  --color-text: var(--gray-14);
+  --color-text-muted: var(--gray-8);
+  --color-text-tooltip: var(--gray-1);
+
+  --color-accent: var(--purple-9);
+  --color-accent-hover: var(--purple-8);
+  --color-accent-active: var(--purple-7);
+  --color-focus: var(--purple-10);
+
+  --color-border: var(--gray-7);
+  --color-interactive-hover: rgba(83, 83, 95, 0.48);
+  --color-interactive-active: rgba(83, 83, 95, 0.55);
+  --color-button-secondary: rgba(83, 83, 95, 0.38);
+}
+
+html {
+  background-color: var(--gray-1);
+  color: var(--color-text);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray-5);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-6);
+}
