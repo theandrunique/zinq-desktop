@@ -246,4 +246,10 @@
       <p class="text-sm text-(--color-text-muted)">Value: {selectValue}</p>
     </div>
   </section>
+
+  <section class="mb-8">
+    <h2 class="mb-4 text-lg font-semibold">Chat list</h2>
+    <div class="flex max-w-72 flex-col gap-4">
+    </div>
+  </section>
 </div>
