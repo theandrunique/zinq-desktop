@@ -13,7 +13,8 @@
     Tooltip,
   } from "@/components/ui";
   import { ChatCard } from "@/components/ChatCard";
-  import { testChats } from "@/stories/test-data";
+  import { MessageList } from "@/components/MessageList";
+  import { testChats, testMessages } from "@/stories/test-data";
 
   let inputValue = $state("");
   let textareaValue = $state("");
@@ -252,10 +253,19 @@
 
   <section class="mb-8">
     <h2 class="mb-4 text-lg font-semibold">Chat list</h2>
-    <div class="flex max-w-72 flex-col max-h-64 overflow-auto bg-(--gray-2)">
+    <div class="flex max-h-64 max-w-72 flex-col overflow-auto bg-(--gray-2)">
       {#each testChats as chat (chat.id)}
         <ChatCard {chat} currentUserId="user_self" />
       {/each}
+    </div>
+  </section>
+
+  <section class="mb-8">
+    <h2 class="mb-4 text-lg font-semibold">Messages</h2>
+    <div
+      class="max-h-[600px] max-w-[600px] overflow-y-auto rounded-lg border border-(--color-border) bg-(--color-bg-page)"
+    >
+      <MessageList messages={testMessages} currentUserId="user_self" maxReadMessageId="msg_t5" />
     </div>
   </section>
 </div>
