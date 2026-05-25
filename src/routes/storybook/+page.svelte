@@ -252,7 +252,7 @@
 
   <section class="mb-8">
     <h2 class="mb-4 text-lg font-semibold">Chat list</h2>
-    <div class="flex max-w-80 flex-col">
+    <div class="flex max-w-72 flex-col max-h-64 overflow-auto bg-(--gray-2)">
       {#each testChats as chat (chat.id)}
         <ChatCard {chat} currentUserId="user_self" />
       {/each}

@@ -115,7 +115,7 @@
 
       {#if chat.unread_count > 0 && !isOwnLastMessage}
         <div
-          class="ml-1 flex h-4 w-fit items-center justify-center rounded-full bg-(--color-accent) px-1 text-[10px] font-semibold text-(--color-text)"
+          class="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-(--color-accent) px-1 text-[10px] font-semibold text-(--color-text) leading-none whitespace-nowrap shrink-0"
         >
           {chat.unread_count}
         </div>
