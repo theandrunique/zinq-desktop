@@ -39,7 +39,7 @@
   </div>
 {:else}
   <div class="grid h-full w-full grid-rows-2 gap-1">
-    <MediaItem attachment={attachments[0]} class="h-full row-span-1 w-full" />
+    <MediaItem attachment={attachments[0]} class="row-span-1 h-full w-full" />
     <div class="relative grid h-full grid-cols-3 gap-1">
       {#each attachments.slice(1, 5) as attachment (attachment.id)}
         <MediaItem {attachment} class="w-full" />

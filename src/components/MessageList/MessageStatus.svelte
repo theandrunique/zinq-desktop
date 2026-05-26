@@ -15,9 +15,11 @@
 
   let isEdited = $derived(message.edited_at !== null);
   function extractNum(id: string): number {
-    return parseInt(id.replace(/\D/g, ''), 10) || 0;
+    return parseInt(id.replace(/\D/g, ""), 10) || 0;
   }
-  let isRead = $derived(!!maxReadMessageId && extractNum(maxReadMessageId) >= extractNum(message.id));
+  let isRead = $derived(
+    !!maxReadMessageId && extractNum(maxReadMessageId) >= extractNum(message.id),
+  );
 </script>
 
 <div
@@ -27,7 +29,8 @@
   )}
 >
   <span class="mr-1">
-    {#if isEdited}edited {/if}
+    {#if isEdited}edited
+    {/if}
     {formatMessageTime(message.created_at)}
   </span>
   {#if isOwnMessage}

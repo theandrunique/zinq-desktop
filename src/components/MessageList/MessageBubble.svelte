@@ -52,7 +52,7 @@
     class="relative max-w-[min(90%,28rem)] py-1.5 pr-3 pl-2.5 text-sm text-(--color-text) {borderRadius} {bubbleBg}"
   >
     {#if !isOwnMessage && isFirstInGroup}
-      <div class="leading-none font-semibold">
+      <div class="leading-none font-semibold mb-1">
         {message.author.global_name}
       </div>
     {/if}
@@ -85,9 +85,9 @@
         <MessageStatus {message} {isOwnMessage} {maxReadMessageId} />
       </div>
     {:else}
-      <div class="break-words whitespace-pre-wrap">
+      <div class="wrap-break-words whitespace-pre-wrap">
         {message.content}
-        <span class="relative float-right ml-1.5 h-0">
+        <span class="relative float-right ml-1.5 whitespace-nowrap">
           <MessageStatus {message} {isOwnMessage} {maxReadMessageId} class="opacity-0" />
           <div class="absolute top-1 left-1.5">
             <MessageStatus {message} {isOwnMessage} {maxReadMessageId} />

@@ -36,10 +36,15 @@ export function groupMessagesByAuthor(messages: Message[]): Message[][] {
   return groups;
 }
 
+export function getUtcDateKey(iso: string): string {
+  const d = new Date(iso);
+  return d.toISOString().slice(0, 10);
+}
+
 export function groupMessagesByDate(messages: Message[]): [string, Message[]][] {
   const map = new Map<string, Message[]>();
   for (const msg of messages) {
-    const key = new Date(msg.created_at).toDateString();
+    const key = getUtcDateKey(msg.created_at);
     const group = map.get(key) ?? [];
     group.push(msg);
     map.set(key, group);

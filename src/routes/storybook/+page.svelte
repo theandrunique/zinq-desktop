@@ -47,7 +47,7 @@
         alt="User avatar"
         fallback="A"
       />
-      <Avatar alt="User avatar" fallback="A" />
+      <Avatar src={null} alt="User avatar" fallback="A" />
     </div>
   </section>
 
