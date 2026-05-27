@@ -9,9 +9,17 @@
     group: Message[];
     currentUserId: string;
     maxReadMessageId?: string;
+    messageAction: (node: HTMLElement, id: string) => { destroy: () => void };
+    onNavigateToMessage?: (fromId: string, toId: string) => void;
   }
 
-  let { group, currentUserId, maxReadMessageId = "" }: Props = $props();
+  let {
+    group,
+    currentUserId,
+    maxReadMessageId = "",
+    messageAction,
+    onNavigateToMessage,
+  }: Props = $props();
 
   let firstMessage = $derived(group[0]);
   let isOwn = $derived(firstMessage.author_id === currentUserId);
@@ -21,7 +29,9 @@
 
 {#if isMeta}
   {#each group as message (message.id)}
-    <MetaMessage {message} />
+    <div use:messageAction={message.id}>
+      <MetaMessage {message} />
+    </div>
   {/each}
 {:else}
   <div class="flex w-full gap-2">
@@ -43,6 +53,8 @@
           isFirstInGroup={i === 0}
           isLastInGroup={i === group.length - 1}
           {maxReadMessageId}
+          {messageAction}
+          {onNavigateToMessage}
         />
       {/each}
     </div>

@@ -4,12 +4,10 @@
   import { testMessages } from "@/stories/test-data";
 </script>
 
-<div class="flex flex-col h-screen">
+<div class="flex h-screen flex-col">
   <div><Button href="/storybook">Back</Button></div>
 
-  <div
-    class="overflow-y-auto grow"
-  >
+  <div class="min-h-0 grow">
     <MessageList messages={testMessages} currentUserId="user_self" maxReadMessageId="msg_t5" />
   </div>
 </div>

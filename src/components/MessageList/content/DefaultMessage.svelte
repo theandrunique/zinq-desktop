@@ -5,10 +5,9 @@
 
   interface Props {
     message: Message;
-    isOwnMessage: boolean;
   }
 
-  let { message, isOwnMessage: _isOwnMessage = false }: Props = $props();
+  let { message }: Props = $props();
 
   let imagesAndVideos = $derived(
     message.attachments.filter(

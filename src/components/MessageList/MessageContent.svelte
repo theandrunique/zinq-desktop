@@ -7,14 +7,13 @@
 
   interface Props {
     message: Message;
-    isOwnMessage: boolean;
   }
 
-  let { message, isOwnMessage }: Props = $props();
+  let { message }: Props = $props();
 </script>
 
 {#if message.type === "DEFAULT" || message.type === "REPLY"}
-  <DefaultMessage {message} {isOwnMessage} />
+  <DefaultMessage {message} />
 {:else if isMetaMessage(message)}
   <MetaMessage {message} />
 {:else}

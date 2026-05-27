@@ -10,6 +10,8 @@
     isFirstInGroup: boolean;
     isLastInGroup: boolean;
     maxReadMessageId?: string;
+    messageAction: (node: HTMLElement, id: string) => { destroy: () => void };
+    onNavigateToMessage?: (fromId: string, toId: string) => void;
   }
 
   let {
@@ -18,6 +20,8 @@
     isFirstInGroup,
     isLastInGroup,
     maxReadMessageId = "",
+    messageAction,
+    onNavigateToMessage,
   }: Props = $props();
 
   let borderRadius = $derived.by(() => {
@@ -44,6 +48,7 @@
 </script>
 
 <div
+  use:messageAction={message.id}
   data-message-id={message.id}
   data-message-author-id={message.author_id}
   class="flex w-full {isOwnMessage ? 'justify-end' : 'justify-start'}"
@@ -59,7 +64,16 @@
 
     {#if isReply && referencedMessage}
       <div
-        class="mt-1 rounded-md border-l-4 p-2 py-1 leading-none {isOwnMessage
+        role="button"
+        tabindex="0"
+        onclick={() => onNavigateToMessage?.(message.id, referencedMessage.id)}
+        onkeydown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onNavigateToMessage?.(message.id, referencedMessage.id);
+          }
+        }}
+        class="mt-1 cursor-pointer rounded-md border-l-4 p-2 py-1 leading-none transition-colors hover:brightness-110 {isOwnMessage
           ? 'border-(--purple-7) bg-(--purple-7)/50'
           : 'border-(--purple-8) bg-(--purple-8)/30'}"
       >
@@ -77,7 +91,7 @@
     {/if}
 
     {#if message.attachments.length > 0}
-      <MessageContent {message} {isOwnMessage} />
+      <MessageContent {message} />
     {/if}
 
     {#if message.content.length === 0}
