@@ -52,7 +52,7 @@
     class="relative max-w-[min(90%,28rem)] py-1.5 pr-3 pl-2.5 text-sm text-(--color-text) {borderRadius} {bubbleBg}"
   >
     {#if !isOwnMessage && isFirstInGroup}
-      <div class="leading-none font-semibold mb-1">
+      <div class="mb-1 leading-none font-semibold">
         {message.author.global_name}
       </div>
     {/if}

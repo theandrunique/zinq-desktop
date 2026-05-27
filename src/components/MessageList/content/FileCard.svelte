@@ -27,7 +27,6 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="flex min-w-48 cursor-pointer items-center gap-2.5"
   role="button"
