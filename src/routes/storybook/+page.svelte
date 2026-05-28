@@ -263,4 +263,9 @@
     <h2 class="mb-4 text-lg font-semibold">Messages</h2>
     <Button href="/storybook/test-message-list">To test message list</Button>
   </section>
+
+  <section class="mb-8">
+    <h2 class="mb-4 text-lg font-semibold">MediaGrid</h2>
+    <Button href="/storybook/media-grid">To media grid</Button>
+  </section>
 </div>
