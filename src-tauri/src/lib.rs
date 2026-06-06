@@ -1,7 +1,10 @@
+#![allow(dead_code)]
+
 mod api_client;
 mod auth;
 mod errors;
 mod logging;
+mod types;
 
 use api_client::ApiClient;
 use tauri::Manager;
@@ -13,14 +16,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_keyring::init())
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
             let app_data_dir = app
                 .path()
                 .app_data_dir()

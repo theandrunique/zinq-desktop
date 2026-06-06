@@ -1,15 +1,6 @@
 <script lang="ts">
-  import { goto } from "$app/navigation";
   import { authStore } from "@/lib/stores/auth-store.svelte";
   import { Loader } from "@/components/ui";
-
-  $effect(() => {
-    if (authStore.status === "authenticated") {
-      goto("/chats");
-    } else if (authStore.status === "unauthenticated") {
-      goto("/auth/login");
-    }
-  });
 </script>
 
 <div class="flex h-screen flex-col items-center justify-center gap-4">

@@ -74,7 +74,7 @@
     {:else if avatarSrc}
       <Avatar src={avatarSrc} alt={displayName} fallback="" class="h-10 w-10" />
     {:else}
-      <Avatar alt={displayName} fallback={avatarFallback} class="h-10 w-10" />
+      <Avatar src={undefined} alt={displayName} fallback={avatarFallback} class="h-10 w-10" />
     {/if}
   </div>
 

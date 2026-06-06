@@ -8,13 +8,12 @@
 </script>
 
 <div class="flex h-screen flex-col p-4">
-  <div class="flex items-center justify-between">
-    <h1 class="text-lg font-semibold">Chats</h1>
+  <div class="flex items-center justify-center">
     {#if authStore.user}
-      <div class="flex items-center gap-3">
-        <span class="text-sm text-(--color-text-muted)">
-          {authStore.user.username}
-        </span>
+      <div class="flex flex-col items-center gap-3">
+        <div class="text-sm text-(--color-text-muted)">
+          {JSON.stringify(authStore.user)}
+        </div>
         <Button variant="secondary" onclick={handleLogout}>Logout</Button>
       </div>
     {/if}

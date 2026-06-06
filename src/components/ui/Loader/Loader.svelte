@@ -1,10 +1,7 @@
 <script lang="ts">
   import { cn } from "@/utils";
 
-  let {
-    class: className,
-    size = "md",
-  }: { class?: string; size?: "sm" | "md" | "lg" } = $props();
+  let { class: className, size = "md" }: { class?: string; size?: "sm" | "md" | "lg" } = $props();
 
   const sizes = {
     sm: "h-4 w-4",

@@ -24,6 +24,7 @@ export const renderMessageText = (message: Message) => {
   } else if (message.type === "CHAT_CREATE") {
     return `${message.author.username} created the group "${message.metadata.chat_name}"`;
   } else {
+    // @ts-expect-error Unsupported
     return `Unsupported message type ${message.type}. Update the app to support this message type.`;
   }
 };

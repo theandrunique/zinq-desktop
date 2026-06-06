@@ -1,35 +1,12 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+use crate::types::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPair {
     pub access_token: String,
     pub refresh_token: String,
     pub expires_in: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum SessionLifetime {
-    Week,
-    Month,
-    Month3,
-    Month6,
-    Month12,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct User {
-    pub id: String,
-    pub username: String,
-    pub global_name: String,
-    pub bio: Option<String>,
-    pub avatar: Option<String>,
-    pub timestamp: DateTime<Utc>,
-    pub sessions_lifetime: SessionLifetime,
-    pub mfa: bool,
-    pub email: String,
-    pub is_email_verified: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -53,7 +30,17 @@ pub struct RefreshRequest {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AuthEventPayload {
-    pub status: String,
+    pub status: AuthEventStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user: Option<User>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuthEventStatus {
+    Initializing,
+    Refreshing,
+    LoadingUser,
+    Authenticated,
+    Unauthenticated,
 }

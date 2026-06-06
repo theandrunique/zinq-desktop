@@ -1,3 +1,5 @@
+import type { TauriAppError } from "@/types";
+import type { User } from "@lucide/svelte";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -7,37 +9,6 @@ export type AuthStatus =
   | "loading_user"
   | "authenticated"
   | "unauthenticated";
-
-export interface User {
-  id: string;
-  username: string;
-  global_name: string;
-  bio: string | null;
-  avatar: string | null;
-  timestamp: string;
-  sessions_lifetime: SessionLifetime;
-  mfa: boolean;
-  email: string;
-  is_email_verified: boolean;
-}
-
-export type SessionLifetime =
-  | "WEEK"
-  | "MONTH"
-  | "MONTH_3"
-  | "MONTH_6"
-  | "MONTH_12";
-
-export interface TauriAppError {
-  kind: "NETWORK" | "API" | "SERIALIZATION" | "UNEXPECTED";
-  message: string;
-  api_error?: {
-    code: string;
-    message: string;
-    errors?: Record<string, string[]>;
-    metadata?: Record<string, string>;
-  };
-}
 
 interface AuthEventPayload {
   status: AuthStatus;
@@ -56,7 +27,10 @@ function createAuthStore() {
       error = null;
     });
 
-    invoke("auth_init");
+    invoke("auth_init").catch((e) => {
+      console.error("auth_init failed", e);
+      error = e as TauriAppError;
+    });
   }
 
   async function login(username: string, password: string): Promise<boolean> {
@@ -86,11 +60,15 @@ function createAuthStore() {
     }
   }
 
-  function logout() {
-    invoke("auth_logout");
+  async function logout(): Promise<void> {
+    try {
+      await invoke("auth_logout");
+    } catch (e) {
+      error = e as TauriAppError;
+      console.error("logout failed", e);
+    }
     status = "unauthenticated";
     user = null;
-    error = null;
   }
 
   return {

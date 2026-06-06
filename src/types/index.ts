@@ -1,3 +1,29 @@
+export interface TauriAppError {
+  kind: "NETWORK" | "API" | "SERIALIZATION" | "UNEXPECTED";
+  message: string;
+  api_error?: {
+    code: string;
+    message: string;
+    errors?: Record<string, string[]>;
+    metadata?: Record<string, string>;
+  };
+}
+
+export interface User {
+  id: string;
+  username: string;
+  global_name: string;
+  bio: string | null;
+  avatar: string | null;
+  timestamp: string;
+  sessions_lifetime: SessionLifetime;
+  mfa: boolean;
+  email: string;
+  is_email_verified: boolean;
+}
+
+export type SessionLifetime = "WEEK" | "MONTH" | "MONTH_3" | "MONTH_6" | "MONTH_12";
+
 export enum ChannelType {
   DM = "DM",
   GROUP_DM = "GROUP_DM",

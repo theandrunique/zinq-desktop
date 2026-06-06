@@ -31,13 +31,13 @@ pub async fn auth_register(
     password: String,
 ) -> Result<(), TauriAppError> {
     tracing::info!("auth_register command called");
-    state.register(&username, &email, &global_name, &password).await
+    state
+        .register(&username, &email, &global_name, &password)
+        .await
 }
 
 #[tauri::command]
-pub async fn auth_logout(
-    state: State<'_, Arc<AuthManager>>,
-) -> Result<(), String> {
+pub async fn auth_logout(state: State<'_, Arc<AuthManager>>) -> Result<(), TauriAppError> {
     tracing::info!("auth_logout command called");
     state.logout().await
 }

@@ -59,26 +59,35 @@ pub enum ErrorKind {
 impl From<ClientError> for TauriAppError {
     fn from(err: ClientError) -> Self {
         match err {
-            ClientError::Network(_) => TauriAppError {
-                kind: ErrorKind::Network,
-                message: "No internet connection or server unavailable".into(),
-                api_error: None,
-            },
+            ClientError::Network(e) => {
+                tracing::debug!(error = ?e, "Network error");
+                TauriAppError {
+                    kind: ErrorKind::Network,
+                    message: "No internet connection or server unavailable".into(),
+                    api_error: None,
+                }
+            }
             ClientError::Api(e) => TauriAppError {
                 kind: ErrorKind::Api,
                 message: e.message.clone(),
                 api_error: Some(e),
             },
-            ClientError::Serialization(e) => TauriAppError {
-                kind: ErrorKind::Serialization,
-                message: format!("Failed to process server response: {}", e),
-                api_error: None,
-            },
-            ClientError::UnexpectedStatus(status, _) => TauriAppError {
-                kind: ErrorKind::Unexpected,
-                message: format!("Server returned unexpected response ({})", status),
-                api_error: None,
-            },
+            ClientError::Serialization(e) => {
+                tracing::warn!(error = ?e, "Serialization error");
+                TauriAppError {
+                    kind: ErrorKind::Serialization,
+                    message: format!("Failed to process server response: {}", e),
+                    api_error: None,
+                }
+            }
+            ClientError::UnexpectedStatus(status, body) => {
+                tracing::warn!(status = %status, body = %body, "Unexpected status");
+                TauriAppError {
+                    kind: ErrorKind::Unexpected,
+                    message: format!("Server returned unexpected response ({})", status),
+                    api_error: None,
+                }
+            }
         }
     }
 }
