@@ -39,6 +39,7 @@ pub fn init_logging(app_data_dir: &PathBuf) {
     {
         eprintln!("Failed to initialize tracing subscriber");
     }
-
-    tracing::info!(logs_dir = %logs_dir.display(), "Logging initialized");
+    else {
+        tracing::info!(logs_dir = %logs_dir.display(), "Logging initialized");
+    }
 }
