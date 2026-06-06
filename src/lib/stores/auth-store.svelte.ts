@@ -1,5 +1,4 @@
-import type { TauriAppError } from "@/types";
-import type { User } from "@lucide/svelte";
+import type { TauriAppError, User } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
@@ -20,13 +19,13 @@ function createAuthStore() {
   let user = $state<User | null>(null);
   let error = $state<TauriAppError | null>(null);
 
-  function initAuth() {
-    listen<AuthEventPayload>("auth:status-changed", (event) => {
-      status = event.payload.status;
-      user = event.payload.user ?? null;
-      error = null;
-    });
+  listen<AuthEventPayload>("auth:status-changed", (event) => {
+    status = event.payload.status;
+    user = event.payload.user ?? null;
+    error = null;
+  });
 
+  function initAuth() {
     invoke("auth_init").catch((e) => {
       console.error("auth_init failed", e);
       error = e as TauriAppError;
@@ -67,8 +66,6 @@ function createAuthStore() {
       error = e as TauriAppError;
       console.error("logout failed", e);
     }
-    status = "unauthenticated";
-    user = null;
   }
 
   return {

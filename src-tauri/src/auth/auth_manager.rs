@@ -4,7 +4,9 @@ use tauri::{async_runtime::RwLock, AppHandle, Emitter};
 use tauri_plugin_keyring::KeyringExt;
 
 use crate::api_client::{ApiClient, ClientError};
-use crate::auth::types::{AuthEventPayload, AuthEventStatus, LoginRequest, RefreshRequest, RegisterRequest, TokenPair};
+use crate::auth::types::{
+    AuthEventPayload, AuthEventStatus, LoginRequest, RefreshRequest, RegisterRequest, TokenPair,
+};
 use crate::errors::{ErrorKind, TauriAppError};
 use crate::types::User;
 
