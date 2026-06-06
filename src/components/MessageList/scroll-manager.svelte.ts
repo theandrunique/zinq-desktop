@@ -53,6 +53,10 @@ export function createScrollManager() {
     }
   }
 
+  function hasElement(id: string): boolean {
+    return elements.has(id);
+  }
+
   function messageAction(node: HTMLElement, id: string) {
     elements.set(id, node);
     return {
@@ -165,6 +169,7 @@ export function createScrollManager() {
     get buttonState() {
       return buttonState;
     },
+    hasElement,
     messageAction,
     setContainer,
     scrollToBottom,

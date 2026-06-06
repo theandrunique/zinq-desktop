@@ -23,3 +23,11 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
+reqwest = { version = "0.13.3", features = ["json"] }
+tauri-plugin-keyring = "0.1.0"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0.102"
+tokio = "1.52.3"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }

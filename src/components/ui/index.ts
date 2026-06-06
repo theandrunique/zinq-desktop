@@ -1,6 +1,7 @@
 export { Dialog } from "./Dialog/index.ts";
 export { DropdownMenu } from "./DropdownMenu/index.ts";
 export { Select } from "./Select/index.ts";
+export { Loader } from "./Loader/index.ts";
 export { default as Button } from "./Button.svelte";
 export { default as Input } from "./Input.svelte";
 export { default as Slider } from "./Slider.svelte";

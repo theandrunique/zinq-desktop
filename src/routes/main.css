@@ -52,7 +52,7 @@
   --color-button-secondary: rgba(83, 83, 95, 0.38);
 }
 
-html {
+html, body {
   background-color: var(--gray-1);
   color: var(--color-text);
 }

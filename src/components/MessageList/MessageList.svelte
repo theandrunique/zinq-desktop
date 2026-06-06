@@ -10,9 +10,17 @@
     messages: Message[];
     currentUserId: string;
     maxReadMessageId?: string;
+    onLoadAroundMessage?: (targetId: string) => Promise<void>;
+    onLoadOlder?: () => void;
   }
 
-  let { messages, currentUserId, maxReadMessageId = "" }: Props = $props();
+  let {
+    messages,
+    currentUserId,
+    maxReadMessageId = "",
+    onLoadAroundMessage,
+    onLoadOlder,
+  }: Props = $props();
 
   let dateGroups = $derived(groupMessagesByDate(messages));
   let containerEl = $state<HTMLElement | null>(null);
@@ -34,11 +42,13 @@
   });
 
   $effect(() => {
-    if (initialScrolled || !containerEl || !maxReadMessageId) return;
+    if (initialScrolled || !containerEl) return;
     if (messages.length === 0) return;
 
     const raf = requestAnimationFrame(() => {
-      manager.scrollToMessage(maxReadMessageId, { behavior: "instant" });
+      if (maxReadMessageId) {
+        manager.scrollToMessage(maxReadMessageId, { behavior: "instant" });
+      }
       manager.updateButtonState();
       initialScrolled = true;
     });
@@ -54,13 +64,35 @@
     prevMessagesLength = len;
   });
 
-  function handleNavigateToMessage(fromId: string, toId: string) {
-    manager.navigateToReference(fromId, toId);
+  $effect(() => {
+    const el = containerEl;
+    if (!el) return;
+
+    function onScroll() {
+      if (!el) return;
+      if (el.scrollTop < 200) {
+        onLoadOlder?.();
+      }
+    }
+
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  });
+
+  async function handleNavigateToMessage(fromId: string, toId: string) {
+    if (manager.hasElement(toId)) {
+      manager.navigateToReference(fromId, toId);
+      return;
+    }
+    if (onLoadAroundMessage) {
+      await onLoadAroundMessage(toId);
+      manager.navigateToReference(fromId, toId);
+    }
   }
 </script>
 
 <div class="relative h-full">
-  <div bind:this={containerEl} class="h-full overflow-y-auto">
+  <div bind:this={containerEl} class="h-full overflow-y-auto" style="overflow-anchor: auto">
     <div class="my-2 flex flex-col gap-2 px-4">
       {#each dateGroups as [dateKey, dateMessages] (dateKey)}
         <div class="flex flex-col gap-2">

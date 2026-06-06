@@ -13,11 +13,12 @@
     "windows": [
       {
         "title": "Zinq Desktop",
-        "width": 800,
-        "height": 600,
+        "width": 850,
+        "height": 500,
         "resizable": true,
         "fullscreen": false,
-        "backgroundColor": "#0e0e10"
+        "backgroundColor": "#0e0e10",
+        "center": true
       }
     ],
     "security": {
