@@ -2,6 +2,7 @@ use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
 
 use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
+use tokio::sync::Mutex;
 
 use crate::errors::{ApiError, ErrorCode};
 
@@ -22,6 +23,7 @@ pub struct ApiClient {
     base_url: String,
     token_provider: Option<TokenProvider>,
     refresh_provider: Option<RefreshProvider>,
+    refresh_lock: Mutex<()>,
 }
 
 impl ApiClient {
@@ -34,7 +36,12 @@ impl ApiClient {
             base_url,
             token_provider: None,
             refresh_provider: None,
+            refresh_lock: Mutex::new(()),
         }
+    }
+
+    fn build_url(&self, endpoint: &str) -> String {
+        format!("{}{}", self.base_url, endpoint)
     }
 
     pub fn set_token_provider<F>(&mut self, provider: F)
@@ -49,10 +56,6 @@ impl ApiClient {
         F: Fn() -> Pin<Box<dyn Future<Output = bool> + Send>> + Send + Sync + 'static,
     {
         self.refresh_provider = Some(Arc::new(provider));
-    }
-
-    fn build_url(&self, endpoint: &str) -> String {
-        format!("{}{}", self.base_url, endpoint)
     }
 
     fn get_token(&self) -> Option<String> {

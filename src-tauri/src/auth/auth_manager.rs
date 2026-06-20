@@ -8,15 +8,15 @@ use crate::auth::types::{
     AuthEventPayload, AuthEventStatus, LoginRequest, RefreshRequest, RegisterRequest, TokenPair,
 };
 use crate::errors::{ErrorKind, TauriAppError};
-use crate::types::User;
+use crate::schemas::UserPrivate;
 
 const KEYRING_SERVICE: &str = "zinq";
 const KEYRING_USER: &str = "auth";
 
 pub struct AuthManager {
+    pub api_client: ApiClient,
     app_handle: AppHandle,
-    api_client: ApiClient,
-    user: Arc<RwLock<Option<User>>>,
+    user: Arc<RwLock<Option<UserPrivate>>>,
     tokens: Arc<RwLock<Option<TokenPair>>>,
 }
 
@@ -219,7 +219,7 @@ impl AuthManager {
             user: None,
         });
 
-        let user = self.api_client.get::<User>("/users/@me").await?;
+        let user = self.api_client.get::<UserPrivate>("/users/@me").await?;
         *self.user.write().await = Some(user.clone());
 
         tracing::info!(user_id = %user.id, username = %user.username, "User loaded");
@@ -231,7 +231,7 @@ impl AuthManager {
         Ok(())
     }
 
-    async fn do_refresh(&self, refresh_token: &str) -> Result<User, ClientError> {
+    async fn do_refresh(&self, refresh_token: &str) -> Result<UserPrivate, ClientError> {
         tracing::debug!("Performing token refresh");
 
         let body = RefreshRequest {
@@ -247,7 +247,7 @@ impl AuthManager {
             ClientError::UnexpectedStatus(reqwest::StatusCode::INTERNAL_SERVER_ERROR, e.message)
         })?;
 
-        let user = self.api_client.get::<User>("/users/@me").await?;
+        let user = self.api_client.get::<UserPrivate>("/users/@me").await?;
         *self.user.write().await = Some(user.clone());
 
         tracing::info!("Token refresh completed");

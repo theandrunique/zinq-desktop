@@ -1,10 +1,13 @@
 #![allow(dead_code)]
 
 mod api_client;
+mod zinq;
 mod auth;
 mod errors;
 mod logging;
 mod types;
+mod schemas;
+mod db;
 
 use api_client::ApiClient;
 use tauri::Manager;
@@ -23,6 +26,15 @@ pub fn run() {
             std::fs::create_dir_all(&app_data_dir).ok();
 
             logging::init_logging(&app_data_dir);
+
+            let _ = tauri::async_runtime::block_on(async {
+                let pool = db::create_pool(&app_data_dir)
+                    .await
+                    .expect("Failed to create database pool");
+                db::run_migrations(&pool)
+                    .await
+                    .expect("Failed to run migrations");
+            });
 
             let api_client = ApiClient::new("http://localhost:8000".into());
             let auth_manager = AuthManager::new(app.handle().clone(), api_client);

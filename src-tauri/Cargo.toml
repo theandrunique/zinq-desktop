@@ -29,3 +29,4 @@ tokio = "1.52.3"
 tracing = "0.1.44"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "chrono"] }

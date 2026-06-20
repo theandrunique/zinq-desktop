@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::types::User;
+use crate::schemas::UserPrivate;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPair {
@@ -32,7 +32,7 @@ pub struct RefreshRequest {
 pub struct AuthEventPayload {
     pub status: AuthEventStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub user: Option<User>,
+    pub user: Option<UserPrivate>,
 }
 
 #[derive(Debug, Clone, Serialize)]
