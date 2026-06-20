@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use tauri::State;
 
 use super::auth_manager::AuthManager;
 use crate::errors::TauriAppError;
 
 #[tauri::command]
-pub async fn auth_init(state: State<'_, Arc<AuthManager>>) -> Result<(), TauriAppError> {
+pub async fn auth_init(state: State<'_, AuthManager>) -> Result<(), TauriAppError> {
     tracing::info!("auth_init command called");
     state.init().await;
     Ok(())
@@ -14,7 +12,7 @@ pub async fn auth_init(state: State<'_, Arc<AuthManager>>) -> Result<(), TauriAp
 
 #[tauri::command]
 pub async fn auth_login(
-    state: State<'_, Arc<AuthManager>>,
+    state: State<'_, AuthManager>,
     username: String,
     password: String,
 ) -> Result<(), TauriAppError> {
@@ -24,7 +22,7 @@ pub async fn auth_login(
 
 #[tauri::command]
 pub async fn auth_register(
-    state: State<'_, Arc<AuthManager>>,
+    state: State<'_, AuthManager>,
     username: String,
     email: String,
     global_name: String,
@@ -37,7 +35,7 @@ pub async fn auth_register(
 }
 
 #[tauri::command]
-pub async fn auth_logout(state: State<'_, Arc<AuthManager>>) -> Result<(), TauriAppError> {
+pub async fn auth_logout(state: State<'_, AuthManager>) -> Result<(), TauriAppError> {
     tracing::info!("auth_logout command called");
     state.logout().await
 }

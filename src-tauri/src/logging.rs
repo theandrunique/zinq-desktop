@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::OnceLock};
+use std::{path::{Path}, sync::OnceLock};
 
 use tracing_appender::{
     non_blocking::WorkerGuard,
@@ -8,7 +8,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 
 static LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 
-pub fn init_logging(app_data_dir: &PathBuf) {
+pub fn init_logging(app_data_dir: &Path) {
     let logs_dir = app_data_dir.join("logs");
     std::fs::create_dir_all(&logs_dir).ok();
 

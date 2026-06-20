@@ -1,8 +1,13 @@
-use std::{future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
-use tokio::sync::Mutex;
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::errors::{ApiError, ErrorCode};
 
@@ -21,9 +26,9 @@ pub type RefreshProvider =
 pub struct ApiClient {
     client: Client,
     base_url: String,
-    token_provider: Option<TokenProvider>,
-    refresh_provider: Option<RefreshProvider>,
-    refresh_lock: Mutex<()>,
+    token_provider: Mutex<Option<TokenProvider>>,
+    refresh_provider: Mutex<Option<RefreshProvider>>,
+    refresh_lock: TokioMutex<()>,
 }
 
 impl ApiClient {
@@ -34,9 +39,9 @@ impl ApiClient {
                 .build()
                 .expect("Failed to create HTTP client"),
             base_url,
-            token_provider: None,
-            refresh_provider: None,
-            refresh_lock: Mutex::new(()),
+            token_provider: Mutex::new(None),
+            refresh_provider: Mutex::new(None),
+            refresh_lock: TokioMutex::new(()),
         }
     }
 
@@ -44,26 +49,34 @@ impl ApiClient {
         format!("{}{}", self.base_url, endpoint)
     }
 
-    pub fn set_token_provider<F>(&mut self, provider: F)
+    pub fn set_token_provider<F>(&self, provider: F)
     where
         F: Fn() -> Option<String> + Send + Sync + 'static,
     {
-        self.token_provider = Some(Arc::new(provider));
+        *self.token_provider.lock().unwrap() = Some(Arc::new(provider));
     }
 
-    pub fn set_refresh_provider<F>(&mut self, provider: F)
+    pub fn set_refresh_provider<F>(&self, provider: F)
     where
         F: Fn() -> Pin<Box<dyn Future<Output = bool> + Send>> + Send + Sync + 'static,
     {
-        self.refresh_provider = Some(Arc::new(provider));
+        *self.refresh_provider.lock().unwrap() = Some(Arc::new(provider));
     }
 
     fn get_token(&self) -> Option<String> {
-        self.token_provider.as_ref().and_then(|f| f())
+        self.token_provider
+            .lock()
+            .ok()
+            .and_then(|lock| lock.as_ref().and_then(|f| f()))
     }
 
     fn should_refresh(&self, err: &ClientError) -> bool {
-        if self.refresh_provider.is_none() {
+        let has_provider = self
+            .refresh_provider
+            .lock()
+            .ok()
+            .is_some_and(|lock| lock.is_some());
+        if !has_provider {
             return false;
         }
         match err {
@@ -113,11 +126,13 @@ impl ApiClient {
         if let Err(ref err) = result {
             if self.should_refresh(err) {
                 tracing::warn!(endpoint, "Token expired, attempting refresh");
-                let refresh = self.refresh_provider.as_ref().unwrap();
-                if refresh().await {
-                    tracing::info!(endpoint, "Token refreshed, retrying request");
-                    let new_token = self.get_token();
-                    return self.execute::<T>(try_send(new_token)).await;
+                let refresh = self.refresh_provider.lock().unwrap().clone();
+                if let Some(f) = refresh {
+                    if f().await {
+                        tracing::info!(endpoint, "Token refreshed, retrying request");
+                        let new_token = self.get_token();
+                        return self.execute::<T>(try_send(new_token)).await;
+                    }
                 }
                 tracing::error!(endpoint, "Token refresh failed");
             }

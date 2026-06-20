@@ -1,18 +1,19 @@
-#![allow(dead_code)]
-
 mod api_client;
-mod zinq;
 mod auth;
+mod db;
 mod errors;
 mod logging;
-mod types;
 mod schemas;
-mod db;
+mod types;
+mod zinq;
+
+use std::sync::Arc;
 
 use api_client::ApiClient;
 use tauri::Manager;
 
 use crate::auth::auth_manager::AuthManager;
+use crate::zinq::manager::ZinqManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -27,7 +28,7 @@ pub fn run() {
 
             logging::init_logging(&app_data_dir);
 
-            let _ = tauri::async_runtime::block_on(async {
+            tauri::async_runtime::block_on(async {
                 let pool = db::create_pool(&app_data_dir)
                     .await
                     .expect("Failed to create database pool");
@@ -36,9 +37,11 @@ pub fn run() {
                     .expect("Failed to run migrations");
             });
 
-            let api_client = ApiClient::new("http://localhost:8000".into());
-            let auth_manager = AuthManager::new(app.handle().clone(), api_client);
+            let api_client = Arc::new(ApiClient::new("http://localhost:8000".into()));
+            let auth_manager = AuthManager::new(app.handle().clone(), api_client.clone());
+            let zinq_manager = ZinqManager::new(api_client);
             app.manage(auth_manager);
+            app.manage(zinq_manager);
 
             Ok(())
         })

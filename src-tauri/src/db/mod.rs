@@ -1,6 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
-use sqlx::{ConnectOptions, SqlitePool, sqlite::{SqliteConnectOptions, SqlitePoolOptions}};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+    ConnectOptions, SqlitePool,
+};
 
 pub async fn create_pool(app_dir: &PathBuf) -> Result<SqlitePool, sqlx::Error> {
     std::fs::create_dir_all(app_dir).ok();
@@ -28,9 +31,7 @@ pub async fn create_pool(app_dir: &PathBuf) -> Result<SqlitePool, sqlx::Error> {
 pub async fn run_migrations(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     tracing::info!("Running migrations...");
 
-    sqlx::migrate!("src/db/migrations")
-        .run(pool)
-        .await?;
+    sqlx::migrate!("src/db/migrations").run(pool).await?;
 
     tracing::info!("Migrations completed successfully");
 

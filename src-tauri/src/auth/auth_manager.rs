@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use tauri::{async_runtime::RwLock, AppHandle, Emitter};
+use tauri::{async_runtime::RwLock, AppHandle, Emitter, Manager};
 use tauri_plugin_keyring::KeyringExt;
 
-use crate::api_client::{ApiClient, ClientError};
+use crate::api_client::ApiClient;
 use crate::auth::types::{
     AuthEventPayload, AuthEventStatus, LoginRequest, RefreshRequest, RegisterRequest, TokenPair,
 };
@@ -14,14 +14,14 @@ const KEYRING_SERVICE: &str = "zinq";
 const KEYRING_USER: &str = "auth";
 
 pub struct AuthManager {
-    pub api_client: ApiClient,
+    pub api_client: Arc<ApiClient>,
     app_handle: AppHandle,
     user: Arc<RwLock<Option<UserPrivate>>>,
     tokens: Arc<RwLock<Option<TokenPair>>>,
 }
 
 impl AuthManager {
-    pub fn new(app_handle: AppHandle, mut api_client: ApiClient) -> Arc<Self> {
+    pub fn new(app_handle: AppHandle, api_client: Arc<ApiClient>) -> Self {
         let tokens: Arc<RwLock<Option<TokenPair>>> = Arc::new(RwLock::new(None));
 
         let tokens_for_provider = tokens.clone();
@@ -32,64 +32,63 @@ impl AuthManager {
                 .and_then(|t| t.as_ref().map(|t| t.access_token.clone()))
         });
 
-        use std::sync::Weak;
-        let manager: Arc<Self> = Arc::new_cyclic(|weak_self: &Weak<Self>| {
-            let weak = weak_self.clone();
-            api_client.set_refresh_provider(move || {
-                let weak = weak.clone();
-                Box::pin(async move {
-                    if let Some(m) = weak.upgrade() {
-                        if let Err(e) = m.refresh_session().await {
-                            tracing::error!("Auto-refresh failed: {:?}", e);
-                            return false;
-                        }
-                        tracing::info!("Auto-refresh succeeded");
-                        return true;
-                    }
-                    false
-                })
-            });
-
-            Self {
-                app_handle,
-                api_client,
-                user: Arc::new(RwLock::new(None)),
-                tokens,
-            }
+        let handle = app_handle.clone();
+        api_client.set_refresh_provider(move || {
+            let handle = handle.clone();
+            Box::pin(async move {
+                let Some(auth) = handle.try_state::<AuthManager>() else {
+                    return false;
+                };
+                if let Err(e) = auth.refresh_session().await {
+                    tracing::error!("Auto-refresh failed: {:?}", e);
+                    return false;
+                }
+                tracing::info!("Auto-refresh succeeded");
+                true
+            })
         });
 
-        manager
+        Self {
+            app_handle,
+            api_client,
+            user: Arc::new(RwLock::new(None)),
+            tokens,
+        }
     }
 
-    pub async fn init(self: &Arc<Self>) {
+    pub async fn init(&self) {
         tracing::info!("Auth init started");
         self.emit_status(AuthEventPayload {
             status: AuthEventStatus::Initializing,
             user: None,
         });
 
-        let this = Arc::clone(self);
+        let handle = self.app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            match this.load_tokens().await {
+            let Some(auth) = handle.try_state::<AuthManager>() else {
+                return;
+            };
+
+            match auth.load_tokens().await {
                 Ok(Some(refresh_token)) => {
                     tracing::info!("Refresh token found, attempting refresh");
-                    this.emit_status(AuthEventPayload {
+                    auth.emit_status(AuthEventPayload {
                         status: AuthEventStatus::Refreshing,
                         user: None,
                     });
 
-                    match this.do_refresh(&refresh_token).await {
+                    match auth.do_refresh(&refresh_token).await {
                         Ok(user) => {
                             tracing::info!("Init refresh succeeded");
-                            this.emit_status(AuthEventPayload {
+                            auth.emit_status(AuthEventPayload {
                                 status: AuthEventStatus::Authenticated,
                                 user: Some(user),
                             });
                         }
                         Err(_) => {
                             tracing::warn!("Init refresh failed, clearing tokens");
-                            let _ = this.delete_tokens().await;
-                            this.emit_status(AuthEventPayload {
+                            let _ = auth.delete_tokens().await;
+                            auth.emit_status(AuthEventPayload {
                                 status: AuthEventStatus::Unauthenticated,
                                 user: None,
                             });
@@ -98,7 +97,7 @@ impl AuthManager {
                 }
                 Ok(None) | Err(_) => {
                     tracing::info!("No refresh token found");
-                    this.emit_status(AuthEventPayload {
+                    auth.emit_status(AuthEventPayload {
                         status: AuthEventStatus::Unauthenticated,
                         user: None,
                     });
@@ -231,7 +230,10 @@ impl AuthManager {
         Ok(())
     }
 
-    async fn do_refresh(&self, refresh_token: &str) -> Result<UserPrivate, ClientError> {
+    async fn do_refresh(
+        &self,
+        refresh_token: &str,
+    ) -> Result<UserPrivate, crate::api_client::ClientError> {
         tracing::debug!("Performing token refresh");
 
         let body = RefreshRequest {
@@ -244,7 +246,10 @@ impl AuthManager {
             .await?;
 
         self.save_tokens(&new_tokens).await.map_err(|e| {
-            ClientError::UnexpectedStatus(reqwest::StatusCode::INTERNAL_SERVER_ERROR, e.message)
+            crate::api_client::ClientError::UnexpectedStatus(
+                reqwest::StatusCode::INTERNAL_SERVER_ERROR,
+                e.message,
+            )
         })?;
 
         let user = self.api_client.get::<UserPrivate>("/users/@me").await?;
