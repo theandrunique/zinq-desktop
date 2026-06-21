@@ -1,12 +1,12 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::schemas::{
     chat::{Chat, ChatMember},
     message::Message,
 };
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EventLog {
     pub event_id: String,
     #[serde(rename = "type")]
@@ -14,7 +14,7 @@ pub struct EventLog {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum EventLogType {
     MessageCreate { message: Message },

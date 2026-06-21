@@ -1,3 +1,7 @@
+mod models;
+pub mod repositories;
+
+pub use models::SyncStateRow;
 use std::{path::PathBuf, str::FromStr};
 
 use sqlx::{

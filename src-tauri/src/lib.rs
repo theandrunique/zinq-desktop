@@ -28,18 +28,19 @@ pub fn run() {
 
             logging::init_logging(&app_data_dir);
 
-            tauri::async_runtime::block_on(async {
+            let pool = tauri::async_runtime::block_on(async {
                 let pool = db::create_pool(&app_data_dir)
                     .await
                     .expect("Failed to create database pool");
                 db::run_migrations(&pool)
                     .await
                     .expect("Failed to run migrations");
+                pool
             });
 
             let api_client = Arc::new(ApiClient::new("http://localhost:8000".into()));
             let auth_manager = AuthManager::new(app.handle().clone(), api_client.clone());
-            let zinq_manager = ZinqManager::new(api_client);
+            let zinq_manager = ZinqManager::new(app.handle().clone(), pool.clone(), api_client);
             app.manage(auth_manager);
             app.manage(zinq_manager);
 

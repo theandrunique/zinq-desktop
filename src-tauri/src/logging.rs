@@ -1,4 +1,4 @@
-use std::{path::{Path}, sync::OnceLock};
+use std::{path::Path, sync::OnceLock};
 
 use tracing_appender::{
     non_blocking::WorkerGuard,

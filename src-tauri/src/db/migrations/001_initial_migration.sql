@@ -56,7 +56,7 @@ CREATE TABLE sync_state (
 );
 
 INSERT INTO sync_state (key, value, updated_at) VALUES
-    ('last_event_id', '', 0),
+    ('last_event_id', '0', 0),
     ('last_full_sync', '0', 0);
 
 CREATE TABLE event_log (

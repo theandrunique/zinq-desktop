@@ -1,14 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Clone, Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ChatType {
     Dm,
     GroupDm,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ChatMember {
     pub user_id: String,
     pub username: String,
@@ -17,7 +17,7 @@ pub struct ChatMember {
     pub permissions: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Chat {
     pub id: String,
     pub owner_id: Option<String>,

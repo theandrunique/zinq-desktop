@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Attachment {
     pub id: String,
     pub message_id: String,
@@ -13,7 +13,7 @@ pub struct Attachment {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
     pub chat_id: String,
@@ -26,7 +26,7 @@ pub struct Message {
     pub attachments: Vec<Attachment>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload", rename_all = "snake_case")]
 pub enum MessageType {
     Default,
