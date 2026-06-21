@@ -1,12 +1,19 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use sqlx::SqlitePool;
+use tokio::sync::mpsc;
 use tauri::AppHandle;
 
 use crate::{
     api_client::ApiClient,
-    db::{self, repositories::sync_state},
-    errors::TauriAppError,
+    db::repositories::sync_state,
+    zinq::{
+        event_processor::EventProcessor,
+        socket_client::SocketClient,
+        sync_manager::SyncManager,
+    },
+    schemas::EventLog,
 };
 
 pub struct ZinqManager {
@@ -25,19 +32,78 @@ impl ZinqManager {
     }
 
     pub async fn init(&self) -> Result<(), anyhow::Error> {
-        tracing::info!("Initializing zinq manager...");
+        tracing::info!("Zinq init started");
 
-        let value = sync_state::get_value(&self.pool, "last_event_id")
+        let last_event_id = sync_state::get_value(&self.pool, "last_event_id")
             .await
-            .map_err(anyhow::Error::from)?
-            .unwrap_or("0".to_string());
+            .map_err(|e| anyhow::anyhow!("Failed to read last_event_id: {}", e))?
+            .unwrap_or_else(|| "0".to_string());
 
-        if value == "0" {
-            tracing::info!("Performing full sync...");
+        let token = self
+            .api_client
+            .get_access_token()
+            .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+
+        let (_socket_client, mut event_rx) =
+            SocketClient::connect("http://localhost:8000", &token)
+                .await
+                .context("Failed to connect socket")?;
+
+        let sync_manager =
+            SyncManager::new(self.pool.clone(), self.api_client.clone(), self.app_handle.clone());
+
+        let sync_result = if last_event_id == "0" {
+            sync_manager.full_sync().await
         } else {
-            tracing::info!("Performing incremental sync...");
+            let can_incremental = sync_manager
+                .check_can_incremental_sync(&last_event_id)
+                .await
+                .unwrap_or(false);
+            if can_incremental {
+                sync_manager.incremental_sync(&last_event_id).await
+            } else {
+                sync_manager.full_sync().await
+            }
+        };
+
+        if let Err(e) = sync_result {
+            tracing::error!("Sync failed: {}", e.message);
         }
 
+        drain_buffer(&self.pool, &mut event_rx).await;
+
+        let pool = self.pool.clone();
+        tauri::async_runtime::spawn(async move {
+            live_event_loop(pool, event_rx).await;
+        });
+
+        tracing::info!("Zinq init completed");
         Ok(())
+    }
+}
+
+async fn drain_buffer(pool: &SqlitePool, rx: &mut mpsc::UnboundedReceiver<EventLog>) {
+    let processor = EventProcessor::new(pool.clone());
+    let mut count = 0;
+
+    while let Ok(event) = rx.try_recv() {
+        if let Err(e) = processor.process_event(&event).await {
+            tracing::error!("Failed to process buffered event {}: {:?}", event.event_id, e);
+        }
+        count += 1;
+    }
+
+    if count > 0 {
+        tracing::info!("Processed {} buffered events", count);
+    }
+}
+
+async fn live_event_loop(pool: SqlitePool, mut rx: mpsc::UnboundedReceiver<EventLog>) {
+    let processor = EventProcessor::new(pool);
+
+    while let Some(event) = rx.recv().await {
+        if let Err(e) = processor.process_event(&event).await {
+            tracing::error!("Failed to process live event {}: {:?}", event.event_id, e);
+        }
     }
 }

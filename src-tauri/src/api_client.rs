@@ -63,6 +63,10 @@ impl ApiClient {
         *self.refresh_provider.lock().unwrap() = Some(Arc::new(provider));
     }
 
+    pub fn get_access_token(&self) -> Option<String> {
+        self.get_token()
+    }
+
     fn get_token(&self) -> Option<String> {
         self.token_provider
             .lock()

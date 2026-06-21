@@ -51,6 +51,7 @@ pub fn run() {
             auth::commands::auth_login,
             auth::commands::auth_register,
             auth::commands::auth_logout,
+            zinq::commands::zinq_init,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
