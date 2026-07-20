@@ -28,7 +28,7 @@ pub fn init_logging(app_data_dir: &Path) {
         .with_target(true);
 
     let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("trace,reqwest=warn,hyper_util=warn"));
+        .unwrap_or_else(|_| EnvFilter::new("trace,reqwest=warn,hyper_util=warn,tokio_tungstenite=warn,tungstenite=warn,keyring=warn"));
 
     if tracing_subscriber::registry()
         .with(env_filter)

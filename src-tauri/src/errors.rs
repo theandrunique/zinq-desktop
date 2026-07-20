@@ -40,54 +40,53 @@ pub struct ApiError {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct TauriAppError {
-    pub kind: ErrorKind,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_error: Option<ApiError>,
+#[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AppError {
+    Network { message: String },
+    Api { #[serde(flatten)] error: ApiError },
+    Internal { message: String },
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ErrorKind {
-    Network,
-    Api,
-    Serialization,
-    Unexpected,
-}
-
-impl From<ClientError> for TauriAppError {
+impl From<ClientError> for AppError {
     fn from(err: ClientError) -> Self {
         match err {
             ClientError::Network(e) => {
-                tracing::debug!(error = ?e, "Network error");
-                TauriAppError {
-                    kind: ErrorKind::Network,
+                tracing::warn!(error = ?e, "Network error");
+                AppError::Network {
                     message: "No internet connection or server unavailable".into(),
-                    api_error: None,
                 }
             }
-            ClientError::Api(e) => TauriAppError {
-                kind: ErrorKind::Api,
-                message: e.message.clone(),
-                api_error: Some(e),
-            },
+            ClientError::Api(e) => AppError::Api { error: e },
             ClientError::Serialization(e) => {
                 tracing::warn!(error = ?e, "Serialization error");
-                TauriAppError {
-                    kind: ErrorKind::Serialization,
+                AppError::Internal {
                     message: format!("Failed to process server response: {}", e),
-                    api_error: None,
                 }
             }
             ClientError::UnexpectedStatus(status, body) => {
                 tracing::warn!(status = %status, body = %body, "Unexpected status");
-                TauriAppError {
-                    kind: ErrorKind::Unexpected,
-                    message: format!("Server returned unexpected response ({})", status),
-                    api_error: None,
+                AppError::Internal {
+                    message: format!("Server returned unexpected response: {}", status),
                 }
             }
+        }
+    }
+}
+
+impl From<anyhow::Error> for AppError {
+    fn from(value: anyhow::Error) -> Self {
+        tracing::error!("Internal error: {value:#}");
+        AppError::Internal {
+            message: value.to_string(),
+        }
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(value: sqlx::Error) -> Self {
+        tracing::error!(error = ?value, "Database error");
+        AppError::Internal {
+            message: "A database error occurred".into(),
         }
     }
 }

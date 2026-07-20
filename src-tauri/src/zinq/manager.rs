@@ -1,56 +1,46 @@
-use std::sync::Arc;
-
-use anyhow::Context;
 use sqlx::SqlitePool;
-use tokio::sync::mpsc;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::{
-    api_client::ApiClient,
-    db::repositories::sync_state,
-    zinq::{
-        event_processor::EventProcessor,
-        socket_client::SocketClient,
-        sync_manager::SyncManager,
-    },
-    schemas::EventLog,
+use crate::auth::auth_manager::AuthManager;
+use crate::db::repositories::sync_state;
+use crate::errors::AppError;
+use crate::schemas::EventLog;
+use crate::zinq::{
+    event_processor::EventProcessor,
+    socket_client::SocketClient,
+    sync_manager::SyncManager,
 };
 
 pub struct ZinqManager {
-    api_client: Arc<ApiClient>,
     pool: SqlitePool,
     app_handle: AppHandle,
 }
 
 impl ZinqManager {
-    pub fn new(app_handle: AppHandle, pool: SqlitePool, api_client: Arc<ApiClient>) -> Self {
-        Self {
-            api_client,
-            pool,
-            app_handle,
-        }
+    pub fn new(app_handle: AppHandle, pool: SqlitePool) -> Self {
+        Self { pool, app_handle }
     }
 
-    pub async fn init(&self) -> Result<(), anyhow::Error> {
+    pub async fn init(&self) -> Result<(), AppError> {
         tracing::info!("Zinq init started");
 
         let last_event_id = sync_state::get_value(&self.pool, "last_event_id")
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to read last_event_id: {}", e))?
+            .await?
             .unwrap_or_else(|| "0".to_string());
 
         let token = self
-            .api_client
+            .app_handle
+            .state::<AuthManager>()
             .get_access_token()
-            .ok_or_else(|| anyhow::anyhow!("No access token available"))?;
+            .ok_or_else(|| AppError::Internal {
+                message: "No access token available".into(),
+            })?;
 
         let (_socket_client, mut event_rx) =
             SocketClient::connect("http://localhost:8000", &token)
-                .await
-                .context("Failed to connect socket")?;
+                .await?;
 
-        let sync_manager =
-            SyncManager::new(self.pool.clone(), self.api_client.clone(), self.app_handle.clone());
+        let sync_manager = SyncManager::new(self.pool.clone(), self.app_handle.clone());
 
         let sync_result = if last_event_id == "0" {
             sync_manager.full_sync().await
@@ -67,7 +57,7 @@ impl ZinqManager {
         };
 
         if let Err(e) = sync_result {
-            tracing::error!("Sync failed: {}", e.message);
+            tracing::error!("Sync failed: {:?}", e);
         }
 
         drain_buffer(&self.pool, &mut event_rx).await;
@@ -82,28 +72,28 @@ impl ZinqManager {
     }
 }
 
-async fn drain_buffer(pool: &SqlitePool, rx: &mut mpsc::UnboundedReceiver<EventLog>) {
+async fn drain_buffer(pool: &SqlitePool, rx: &mut tokio::sync::mpsc::UnboundedReceiver<EventLog>) {
     let processor = EventProcessor::new(pool.clone());
     let mut count = 0;
 
     while let Ok(event) = rx.try_recv() {
         if let Err(e) = processor.process_event(&event).await {
-            tracing::error!("Failed to process buffered event {}: {:?}", event.event_id, e);
+            tracing::error!("Failed to process buffered event {}: {e:?}", event.event_id);
         }
         count += 1;
     }
 
     if count > 0 {
-        tracing::info!("Processed {} buffered events", count);
+        tracing::info!("Processed {count} buffered events");
     }
 }
 
-async fn live_event_loop(pool: SqlitePool, mut rx: mpsc::UnboundedReceiver<EventLog>) {
+async fn live_event_loop(pool: SqlitePool, mut rx: tokio::sync::mpsc::UnboundedReceiver<EventLog>) {
     let processor = EventProcessor::new(pool);
 
     while let Some(event) = rx.recv().await {
         if let Err(e) = processor.process_event(&event).await {
-            tracing::error!("Failed to process live event {}: {:?}", event.event_id, e);
+            tracing::error!("Failed to process live event {}: {e:?}", event.event_id);
         }
     }
 }

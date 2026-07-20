@@ -4,10 +4,7 @@ mod db;
 mod errors;
 mod logging;
 mod schemas;
-mod types;
 mod zinq;
-
-use std::sync::Arc;
 
 use api_client::ApiClient;
 use tauri::Manager;
@@ -38,11 +35,29 @@ pub fn run() {
                 pool
             });
 
-            let api_client = Arc::new(ApiClient::new("http://localhost:8000".into()));
-            let auth_manager = AuthManager::new(app.handle().clone(), api_client.clone());
-            let zinq_manager = ZinqManager::new(app.handle().clone(), pool.clone(), api_client);
-            app.manage(auth_manager);
-            app.manage(zinq_manager);
+            let api_client = ApiClient::new("http://localhost:8000".into());
+            let auth = AuthManager::new(app.handle().clone());
+
+            api_client.set_token_provider({
+                let h = app.handle().clone();
+                move || h.state::<AuthManager>().get_access_token()
+            });
+
+            api_client.set_refresh_provider({
+                let h = app.handle().clone();
+                move || {
+                    let h = h.clone();
+                    Box::pin(async move {
+                        h.state::<AuthManager>().refresh().await.is_ok()
+                    })
+                }
+            });
+
+            let zinq = ZinqManager::new(app.handle().clone(), pool);
+
+            app.manage(api_client);
+            app.manage(auth);
+            app.manage(zinq);
 
             Ok(())
         })
