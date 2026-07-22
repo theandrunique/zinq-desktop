@@ -40,16 +40,9 @@ pub fn run() {
 
             api_client.set_token_provider({
                 let h = app.handle().clone();
-                move || h.state::<AuthManager>().get_access_token()
-            });
-
-            api_client.set_refresh_provider({
-                let h = app.handle().clone();
                 move || {
                     let h = h.clone();
-                    Box::pin(async move {
-                        h.state::<AuthManager>().refresh().await.is_ok()
-                    })
+                    Box::pin(async move { h.state::<AuthManager>().get_access_token().await } )
                 }
             });
 

@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TokenPairSchema {
     pub access_token: String,
     pub refresh_token: String,
-    pub expires_in: u64,
+    pub expires_in: i64,
 }
 
 #[derive(Debug, Serialize)]

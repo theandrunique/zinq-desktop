@@ -32,6 +32,7 @@ impl ZinqManager {
             .app_handle
             .state::<AuthManager>()
             .get_access_token()
+            .await
             .ok_or_else(|| AppError::Internal {
                 message: "No access token available".into(),
             })?;

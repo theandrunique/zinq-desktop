@@ -20,6 +20,7 @@ function createAuthStore() {
   let error = $state<TauriAppError | null>(null);
 
   listen<AuthEventPayload>("auth:status-changed", (event) => {
+    console.log("Event 'auth:status-changed' is called", event.payload)
     status = event.payload.status;
     user = event.payload.user ?? null;
     error = null;
