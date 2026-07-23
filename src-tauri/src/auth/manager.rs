@@ -28,6 +28,104 @@ impl AuthManager {
         }
     }
 
+    pub async fn init(&self) {
+        tracing::info!("Auth init started");
+        self.emit(AuthEventStatus::Initializing, None);
+
+        match self.token_store.load_tokens() {
+            Ok(Some(tokens)) => {
+                let access_preview: String = tokens.access_token.chars().take(15).collect();
+                let refresh_preview: String = tokens.refresh_token.chars().take(15).collect();
+                tracing::trace!(access_token = %access_preview, refresh_token = %refresh_preview, expires_at = %tokens.expires_at, "Session loaded from keystore.");
+                self.emit(AuthEventStatus::Refreshing, None);
+
+                *self.tokens.write().await = Some(tokens);
+
+                match self.fetch_and_emit_user().await {
+                    Ok(_) => {
+                        tracing::info!("The session was successfully restored");
+                    },
+                    Err(err) =>  {
+                        tracing::error!(%err, "Error while fetching user");
+                        self.emit(AuthEventStatus::Unauthenticated, None);
+                    }
+                }
+            }
+            Ok(None) => {
+                tracing::info!("No session was found. Unauthenticated.");
+                self.emit(AuthEventStatus::Unauthenticated, None);
+            }
+            Err(err) => {
+                tracing::warn!(%err, "Loading tokens from keystore has failed. Unauthenticated.");
+                self.emit(AuthEventStatus::Unauthenticated, None);
+            }
+        }
+    }
+
+    pub async fn login(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<(), AppError> {
+        tracing::info!(username, "Login attempt");
+
+        let tokens_response = self
+            .api()
+            .raw_post::<TokenPairSchema, _>(
+                "/auth/sign-in",
+                &LoginRequestSchema {
+                    username: username.into(),
+                    password: password.into(),
+                },
+            )
+            .await?;
+
+        let tokens = TokenPair::from_response(tokens_response);
+
+        match self.token_store.save_tokens(&tokens) {
+            Ok(_) => {}
+            Err(err) => {
+                tracing::warn!(%err, "Failed to save tokens to keystore. Session will not be saved.");
+            }
+        }
+
+        *self.tokens.write().await = Some(tokens);
+
+        self.fetch_and_emit_user().await
+    }
+
+    pub async fn register(
+        &self,
+        username: &str,
+        email: &str,
+        global_name: &str,
+        password: &str,
+    ) -> Result<(), AppError> {
+        tracing::info!(username, email, "Register attempt");
+
+        self.api()
+            .raw_post::<UserPrivate, _>(
+                "/auth/sign-up",
+                &RegisterRequestSchema {
+                    username: username.into(),
+                    email: email.into(),
+                    global_name: global_name.into(),
+                    password: password.into(),
+                },
+            )
+            .await?;
+
+        self.login(username, password).await
+    }
+
+    pub async fn logout(&self) -> Result<(), AppError> {
+        tracing::info!("Logout initiated");
+        self.invalidate_session("user_logout").await;
+        Ok(())
+    }
+}
+
+impl AuthManager {
     pub async fn get_access_token(&self) -> Option<String> {
         let now = Utc::now();
 
@@ -71,13 +169,17 @@ impl AuthManager {
                     *tokens = Some(new_tokens.clone());
                 }
 
-                self.token_store.save_tokens(&new_tokens)
-                    .expect("Failed to save tokens");
+                match self.token_store.save_tokens(&new_tokens) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        tracing::error!(%err, "Failed to save tokens new refreshed tokens, session would not be saved");
+                    }
+                }
 
                 Some(new_tokens.access_token)
             }
             Err(err) => {
-                tracing::error!("Failed to refresh token: {:?}", err);
+                tracing::error!(%err, "Failed to refresh token. Unauthenticated.");
                 {
                     let mut tokens = self.tokens.write().await;
                     *tokens = None;
@@ -88,96 +190,6 @@ impl AuthManager {
         }
     }
 
-    pub async fn init(&self) {
-        tracing::info!("Auth init started");
-        self.emit(AuthEventStatus::Initializing, None);
-
-        match self.token_store.load_tokens() {
-            Ok(Some(tokens)) => {
-                let access_preview: String = tokens.access_token.chars().take(15).collect();
-                let refresh_preview: String = tokens.refresh_token.chars().take(15).collect();
-                tracing::trace!(access_token = %access_preview, refresh_token = %refresh_preview, expires_at = %tokens.expires_at, "Session found");
-                self.emit(AuthEventStatus::Refreshing, None);
-
-                *self.tokens.write().await = Some(tokens);
-                match self.fetch_and_emit_user().await {
-                    Ok(_) => {
-                        tracing::info!("The session was successfully restored");
-                    },
-                    Err(err) =>  {
-                        tracing::error!("Error while fetching user: {:?}", err);
-                        self.emit(AuthEventStatus::Unauthenticated, None);
-                    }
-                }
-            }
-            _ => {
-                tracing::trace!("Session not found");
-                self.emit(AuthEventStatus::Unauthenticated, None);
-            }
-        }
-    }
-
-    pub async fn login(
-        &self,
-        username: &str,
-        password: &str,
-    ) -> Result<(), AppError> {
-        tracing::info!(username, "Login attempt");
-
-        let tokens_response = self
-            .api()
-            .raw_post::<TokenPairSchema, _>(
-                "/auth/sign-in",
-                &LoginRequestSchema {
-                    username: username.into(),
-                    password: password.into(),
-                },
-            )
-            .await?;
-
-        let tokens = TokenPair::from_response(tokens_response);
-
-        self.token_store.save_tokens(&tokens)?;
-
-        *self.tokens.write().await = Some(tokens);
-
-        self.fetch_and_emit_user().await
-    }
-
-    pub async fn register(
-        &self,
-        username: &str,
-        email: &str,
-        global_name: &str,
-        password: &str,
-    ) -> Result<(), AppError> {
-        tracing::info!(username, email, "Register attempt");
-
-        self.api()
-            .raw_post::<UserPrivate, _>(
-                "/auth/sign-up",
-                &RegisterRequestSchema {
-                    username: username.into(),
-                    email: email.into(),
-                    global_name: global_name.into(),
-                    password: password.into(),
-                },
-            )
-            .await?;
-
-        self.login(username, password).await
-    }
-
-    pub async fn logout(&self) -> Result<(), AppError> {
-        tracing::info!("Logout initiated");
-
-        self.token_store.delete_tokens()?;
-        *self.tokens.write().await = None;
-        *self.user.write().await = None;
-        self.emit(AuthEventStatus::Unauthenticated, None);
-
-        Ok(())
-    }
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<TokenPair, AppError> {
         let new_tokens = self
@@ -194,13 +206,13 @@ impl AuthManager {
     }
 
     async fn fetch_and_emit_user(&self) -> Result<(), AppError> {
-        tracing::trace!("Fetching userinfo");
+        tracing::trace!("Fetching userinfo.");
         self.emit(AuthEventStatus::LoadingUser, None);
 
         let user = self.api().get::<UserPrivate>("/users/@me").await?;
         *self.user.write().await = Some(user.clone());
 
-        tracing::info!(user_id = %user.id, username = %user.username, "User loaded");
+        tracing::info!(user_id = %user.id, username = %user.username, "User info fetched.");
         self.emit(AuthEventStatus::Authenticated, Some(user));
 
         Ok(())
@@ -214,5 +226,13 @@ impl AuthManager {
         let _ = self
             .app_handle
             .emit("auth:status-changed", AuthEventPayload { status, user });
+    }
+
+    async fn invalidate_session(&self, reason: &str) {
+        tracing::info!(reason, "Invalidating user session.");
+        self.token_store.delete_tokens().ok();
+        *self.tokens.write().await = None;
+        *self.user.write().await = None;
+        self.emit(AuthEventStatus::Unauthenticated, None);
     }
 }

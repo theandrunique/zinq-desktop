@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +45,18 @@ pub enum AppError {
     Network { message: String },
     Api { #[serde(flatten)] error: ApiError },
     Internal { message: String },
+}
+
+impl std::error::Error for AppError {}
+
+impl std::fmt::Display for AppError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppError::Network { message } => write!(f, "Network error: {message}"),
+            AppError::Api { error } => write!(f, "API error: {error:?}"),
+            AppError::Internal { message } => write!(f, "Internal error: {message}"),
+        }
+    }
 }
 
 impl From<ClientError> for AppError {
