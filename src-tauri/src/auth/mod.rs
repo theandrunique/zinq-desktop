@@ -1,4 +1,4 @@
-pub mod auth_manager;
+pub mod manager;
 pub mod commands;
 pub mod types;
 pub mod schemas;

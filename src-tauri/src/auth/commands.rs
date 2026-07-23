@@ -1,6 +1,6 @@
 use tauri::State;
 
-use super::auth_manager::AuthManager;
+use super::manager::AuthManager;
 use crate::errors::AppError;
 
 #[tauri::command]

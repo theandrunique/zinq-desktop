@@ -9,7 +9,7 @@ mod zinq;
 use api_client::ApiClient;
 use tauri::Manager;
 
-use crate::auth::auth_manager::AuthManager;
+use crate::auth::manager::AuthManager;
 use crate::zinq::manager::ZinqManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

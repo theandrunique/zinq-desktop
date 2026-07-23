@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::{AppHandle, Manager};
 
-use crate::auth::auth_manager::AuthManager;
+use crate::auth::manager::AuthManager;
 use crate::db::repositories::sync_state;
 use crate::errors::AppError;
 use crate::schemas::EventLog;
