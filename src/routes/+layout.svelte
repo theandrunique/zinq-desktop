@@ -12,9 +12,9 @@
   });
 
   $effect(() => {
-    if (authStore.status === "authenticated") {
+    if (authStore.status.type === "authenticated") {
       goto(resolve("/chats"));
-    } else if (authStore.status === "unauthenticated") {
+    } else if (authStore.status.type === "unauthenticated") {
       goto(resolve("/auth/login"));
     }
   });

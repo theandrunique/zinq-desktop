@@ -2,27 +2,20 @@ import type { TauriAppError, User } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type AuthStatus =
-  | "initializing"
-  | "refreshing"
-  | "loading_user"
-  | "authenticated"
-  | "unauthenticated";
-
-interface AuthEventPayload {
-  status: AuthStatus;
-  user?: User;
-}
+export type AuthEventStatus =
+  | { type: "initializing" }
+  | { type: "loading_user" }
+  | { type: "authenticated", user: User }
+  | { type: "unauthenticated" }
+  | { type: "network_error" };
 
 function createAuthStore() {
-  let status = $state<AuthStatus>("initializing");
-  let user = $state<User | null>(null);
+  let status = $state<AuthEventStatus>({ type: "initializing" });
   let error = $state<TauriAppError | null>(null);
 
-  listen<AuthEventPayload>("auth:status-changed", (event) => {
+  listen<AuthEventStatus>("auth:status-changed", (event) => {
     console.log("Event 'auth:status-changed' is called", event.payload)
-    status = event.payload.status;
-    user = event.payload.user ?? null;
+    status = event.payload;
     error = null;
   });
 
@@ -73,17 +66,8 @@ function createAuthStore() {
     get status() {
       return status;
     },
-    get user() {
-      return user;
-    },
     get error() {
       return error;
-    },
-    get isAuthenticated() {
-      return status === "authenticated";
-    },
-    get isInitializing() {
-      return status === "initializing";
     },
     initAuth,
     login,

@@ -2,7 +2,7 @@ use std::{collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use crate::api_client::ClientError;
+use crate::api_client::{ClientError, TokenProviderError};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -81,6 +81,11 @@ impl From<ClientError> for AppError {
                     message: format!("Server returned unexpected response: {}", status),
                 }
             }
+            ClientError::NoSession => AppError::Internal {
+                message: "No session available".into(),
+            },
+            ClientError::TokenProvider(TokenProviderError::Network { message }) => AppError::Network { message },
+            ClientError::TokenProvider(TokenProviderError::Internal { message }) => AppError::Internal { message },
         }
     }
 }

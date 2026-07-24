@@ -28,14 +28,19 @@ impl ZinqManager {
             .await?
             .unwrap_or_else(|| "0".to_string());
 
-        let token = self
+        let token = match self
             .app_handle
             .state::<AuthManager>()
-            .get_access_token()
-            .await
-            .ok_or_else(|| AppError::Internal {
-                message: "No access token available".into(),
-            })?;
+            .get_access_token(false)
+            .await {
+                Ok(Some(token)) => token,
+                Ok(None) => return Err(AppError::Internal {
+                    message: "No access token available".into(),
+                }),
+                Err(_) => return Err(AppError::Internal {
+                    message: "Error getting access token".into(),
+                }),
+            };
 
         let (_socket_client, mut event_rx) =
             SocketClient::connect("http://localhost:8000", &token)

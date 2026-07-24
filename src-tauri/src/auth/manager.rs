@@ -2,10 +2,10 @@ use chrono::Utc;
 use tauri::{async_runtime::RwLock, AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 
-use crate::api_client::ApiClient;
+use crate::api_client::{ApiClient, TokenProviderError};
 use crate::auth::schemas::{LoginRequestSchema, RefreshRequestSchema, RegisterRequestSchema, TokenPairSchema};
 use crate::auth::token_store::TokenStore;
-use crate::auth::types::{AuthEventPayload, AuthEventStatus, TokenPair};
+use crate::auth::types::{AuthEventStatus, TokenPair};
 use crate::errors::AppError;
 use crate::schemas::UserPrivate;
 
@@ -29,35 +29,41 @@ impl AuthManager {
     }
 
     pub async fn init(&self) {
-        tracing::info!("Auth init started");
-        self.emit(AuthEventStatus::Initializing, None);
+        tracing::info!("Auth initialization started");
+        self.emit(AuthEventStatus::Initializing);
 
         match self.token_store.load_tokens() {
             Ok(Some(tokens)) => {
-                let access_preview: String = tokens.access_token.chars().take(15).collect();
-                let refresh_preview: String = tokens.refresh_token.chars().take(15).collect();
-                tracing::trace!(access_token = %access_preview, refresh_token = %refresh_preview, expires_at = %tokens.expires_at, "Session loaded from keystore.");
-                self.emit(AuthEventStatus::Refreshing, None);
+                tracing::trace!(
+                    access_token = %tokens.access_token.chars().take(15).collect::<String>(),
+                    refresh_token = %tokens.refresh_token.chars().take(15).collect::<String>(),
+                    expires_at = %tokens.expires_at,
+                    "Session loaded from keystore"
+                );
 
                 *self.tokens.write().await = Some(tokens);
 
                 match self.fetch_and_emit_user().await {
                     Ok(_) => {
-                        tracing::info!("The session was successfully restored");
+                        tracing::info!("Session successfully restored");
+                    },
+                    Err(AppError::Network { message }) => {
+                        tracing::warn!(%message, "Network error during init");
+                        self.emit(AuthEventStatus::NetworkError);
                     },
                     Err(err) =>  {
                         tracing::error!(%err, "Error while fetching user");
-                        self.emit(AuthEventStatus::Unauthenticated, None);
+                        self.invalidate_session("init_fetch_failed").await;
                     }
                 }
             }
             Ok(None) => {
-                tracing::info!("No session was found. Unauthenticated.");
-                self.emit(AuthEventStatus::Unauthenticated, None);
+                tracing::info!("No session was found (unauthenticated)");
+                self.emit(AuthEventStatus::Unauthenticated);
             }
             Err(err) => {
-                tracing::warn!(%err, "Loading tokens from keystore has failed. Unauthenticated.");
-                self.emit(AuthEventStatus::Unauthenticated, None);
+                tracing::warn!(%err, "Failed to load tokens from keystore");
+                self.emit(AuthEventStatus::Unauthenticated);
             }
         }
     }
@@ -126,26 +132,21 @@ impl AuthManager {
 }
 
 impl AuthManager {
-    pub async fn get_access_token(&self) -> Option<String> {
+    pub async fn get_access_token(&self, force_refresh: bool) -> Result<Option<String>, TokenProviderError> {
         let now = Utc::now();
 
-        let needs_refresh = {
+        {
             let tokens = self.tokens.read().await;
             match &*tokens {
-                Some(t) if t.expires_at >= now => {
+                Some(t) if t.expires_at >= now && !force_refresh => {
                     tracing::trace!(%now, expires_at = %t.expires_at, "No need for refresh");
-                    return Some(t.access_token.clone())
+                    return Ok(Some(t.access_token.clone()))
                 },
-                Some(_) => true,
-                None => false,
+                None => return Ok(None),
+                Some(_) => { },
             }
-        };
-
-        if !needs_refresh {
-            return None;
         }
 
-        tracing::info!("Token expired, refreshing");
         let _guard = self.refresh_lock.lock().await;
 
         let old_refresh_token = {
@@ -153,13 +154,14 @@ impl AuthManager {
             match &*tokens {
                 Some(t) if t.expires_at >= Utc::now() => {
                     tracing::trace!("Token already refreshed by another request");
-                    return Some(t.access_token.clone());
+                    return Ok(Some(t.access_token.clone()));
                 }
+                None => return Ok(None),
                 Some(t) => t.refresh_token.clone(),
-                None => return None,
             }
         };
 
+        tracing::info!("Token expired, refreshing");
         match self.refresh_token(&old_refresh_token).await {
             Ok(new_tokens) => {
                 tracing::info!("Token successfully refreshed");
@@ -176,16 +178,20 @@ impl AuthManager {
                     }
                 }
 
-                Some(new_tokens.access_token)
+                Ok(Some(new_tokens.access_token))
+            }
+            Err(AppError::Network { message }) => {
+                tracing::warn!(%message, "Network error during refresh");
+                Err(TokenProviderError::Network { message })
             }
             Err(err) => {
-                tracing::error!(%err, "Failed to refresh token. Unauthenticated.");
+                tracing::error!(%err, "Failed to refresh token");
                 {
                     let mut tokens = self.tokens.write().await;
                     *tokens = None;
                 }
-                self.emit(AuthEventStatus::Unauthenticated, None);
-                None
+                self.emit(AuthEventStatus::Unauthenticated);
+                Ok(None)
             }
         }
     }
@@ -206,14 +212,14 @@ impl AuthManager {
     }
 
     async fn fetch_and_emit_user(&self) -> Result<(), AppError> {
-        tracing::trace!("Fetching userinfo.");
-        self.emit(AuthEventStatus::LoadingUser, None);
+        tracing::trace!("Fetching userinfo");
+        self.emit(AuthEventStatus::LoadingUser);
 
         let user = self.api().get::<UserPrivate>("/users/@me").await?;
         *self.user.write().await = Some(user.clone());
 
-        tracing::info!(user_id = %user.id, username = %user.username, "User info fetched.");
-        self.emit(AuthEventStatus::Authenticated, Some(user));
+        tracing::info!(user_id = %user.id, username = %user.username, "User info fetched");
+        self.emit(AuthEventStatus::Authenticated { user });
 
         Ok(())
     }
@@ -222,10 +228,10 @@ impl AuthManager {
         self.app_handle.state::<ApiClient>()
     }
 
-    fn emit(&self, status: AuthEventStatus, user: Option<UserPrivate>) {
+    fn emit(&self, status: AuthEventStatus) {
         let _ = self
             .app_handle
-            .emit("auth:status-changed", AuthEventPayload { status, user });
+            .emit("auth:status-changed", status);
     }
 
     async fn invalidate_session(&self, reason: &str) {
@@ -233,6 +239,6 @@ impl AuthManager {
         self.token_store.delete_tokens().ok();
         *self.tokens.write().await = None;
         *self.user.write().await = None;
-        self.emit(AuthEventStatus::Unauthenticated, None);
+        self.emit(AuthEventStatus::Unauthenticated);
     }
 }

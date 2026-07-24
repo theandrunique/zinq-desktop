@@ -42,7 +42,7 @@ pub fn run() {
                 let h = app.handle().clone();
                 move || {
                     let h = h.clone();
-                    Box::pin(async move { h.state::<AuthManager>().get_access_token().await } )
+                    Box::pin(async move { h.state::<AuthManager>().get_access_token(false).await } )
                 }
             });
 

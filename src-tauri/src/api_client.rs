@@ -15,9 +15,17 @@ pub enum ClientError {
     Api(ApiError),
     Serialization(reqwest::Error),
     UnexpectedStatus(StatusCode, String),
+    TokenProvider(TokenProviderError),
+    NoSession,
 }
 
-pub type TokenProvider = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Option<String>> + Send>> + Send + Sync>;
+#[derive(Debug)]
+pub enum TokenProviderError {
+    Network { message: String },
+    Internal { message: String },
+}
+
+pub type TokenProvider = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<Option<String>, TokenProviderError>> + Send>> + Send + Sync>;
 
 pub struct ApiClient {
     client: Client,
@@ -39,7 +47,7 @@ impl ApiClient {
 
     pub fn set_token_provider<F>(&self, provider: F)
     where
-        F: Fn() -> Pin<Box<dyn Future<Output = Option<String>> + Send>> + Send + Sync + 'static,
+        F: Fn() -> Pin<Box<dyn Future<Output = Result<Option<String>, TokenProviderError>> + Send>> + Send + Sync + 'static,
     {
         self.token_provider
             .set(Arc::new(provider))
@@ -124,8 +132,10 @@ impl ApiClient {
                 ()
                 .await;
 
-            if let Some(t) = token {
-                req = req.bearer_auth(t);
+            match token {
+                Ok(Some(t)) => req = req.bearer_auth(t),
+                Ok(None) => return Err(ClientError::NoSession),
+                Err(e) => return Err(ClientError::TokenProvider(e)),
             }
         }
 
