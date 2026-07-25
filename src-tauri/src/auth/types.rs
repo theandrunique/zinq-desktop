@@ -29,10 +29,11 @@ impl TokenPair {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum AuthEventStatus {
+pub enum AuthStatus {
     Initializing,
     LoadingUser,
     Authenticated { user: UserPrivate },
     Unauthenticated,
     NetworkError,
+    ServerError { message: String },
 }

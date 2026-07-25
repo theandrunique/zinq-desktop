@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { authStore } from "@/lib/stores/auth-store.svelte";
-  import { Button, Input, Loader } from "@/components/ui";
+  import { Button, Input, Loader } from "@/lib/components/ui";
   import { resolve } from "$app/paths";
 
   let username = $state("");
@@ -25,8 +25,13 @@
     if (result) {
       goto(resolve("/chats"));
     } else if (authStore.error) {
-      formError = authStore.error.message;
-      fieldErrors = authStore.error.api_error?.errors ?? {};
+      if (authStore.error.type === "api") {
+        formError = authStore.error.error.message;
+        fieldErrors = authStore.error.error?.errors ?? {};
+      } else {
+        formError = authStore.error.message;
+        fieldErrors = {};
+      }
     }
   }
 </script>

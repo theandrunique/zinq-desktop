@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { MessageList } from "@/components/MessageList";
-  import { Button } from "@/components/ui";
-  import { testMessages } from "@/stories/test-data";
+  import { MessageList } from "@/lib/components/MessageList";
+  import { Button } from "@/lib/components/ui";
+  import { testMessages } from "@/lib/stories/test-data";
 </script>
 
 <div class="flex h-screen flex-col">

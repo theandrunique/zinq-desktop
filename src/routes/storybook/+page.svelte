@@ -11,9 +11,9 @@
     Switch,
     Textarea,
     Tooltip,
-  } from "@/components/ui";
-  import { ChatCard } from "@/components/ChatCard";
-  import { testChats } from "@/stories/test-data";
+  } from "@/lib/components/ui";
+  import { ChatCard } from "@/lib/components/ChatCard";
+  import { testChats } from "@/lib/stories/test-data";
 
   let inputValue = $state("");
   let textareaValue = $state("");

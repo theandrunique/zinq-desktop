@@ -5,8 +5,8 @@ use tokio::sync::Mutex;
 use crate::api_client::{ApiClient, TokenProviderError};
 use crate::auth::schemas::{LoginRequestSchema, RefreshRequestSchema, RegisterRequestSchema, TokenPairSchema};
 use crate::auth::token_store::TokenStore;
-use crate::auth::types::{AuthEventStatus, TokenPair};
-use crate::errors::AppError;
+use crate::auth::types::{AuthStatus, TokenPair};
+use crate::errors::{AppError, ErrorCode};
 use crate::schemas::UserPrivate;
 
 pub struct AuthManager {
@@ -30,7 +30,7 @@ impl AuthManager {
 
     pub async fn init(&self) {
         tracing::info!("Auth initialization started");
-        self.emit(AuthEventStatus::Initializing);
+        self.emit(AuthStatus::Initializing);
 
         match self.token_store.load_tokens() {
             Ok(Some(tokens)) => {
@@ -47,23 +47,27 @@ impl AuthManager {
                     Ok(_) => {
                         tracing::info!("Session successfully restored");
                     },
+                    Err(AppError::Api { error }) if let ErrorCode::AuthInvalidToken = error.code => {
+                        tracing::error!(?error, "Error fetching user, session invalid");
+                        self.invalidate_session("invalid_token").await;
+                    }
                     Err(AppError::Network { message }) => {
                         tracing::warn!(%message, "Network error during init");
-                        self.emit(AuthEventStatus::NetworkError);
+                        self.emit(AuthStatus::NetworkError);
                     },
                     Err(err) =>  {
-                        tracing::error!(%err, "Error while fetching user");
-                        self.invalidate_session("init_fetch_failed").await;
+                        tracing::error!(%err, "Errorfetching user");
+                        self.emit(AuthStatus::ServerError { message: err.to_string() })
                     }
                 }
             }
             Ok(None) => {
                 tracing::info!("No session was found (unauthenticated)");
-                self.emit(AuthEventStatus::Unauthenticated);
+                self.emit(AuthStatus::Unauthenticated);
             }
             Err(err) => {
                 tracing::warn!(%err, "Failed to load tokens from keystore");
-                self.emit(AuthEventStatus::Unauthenticated);
+                self.emit(AuthStatus::Unauthenticated);
             }
         }
     }
@@ -180,22 +184,21 @@ impl AuthManager {
 
                 Ok(Some(new_tokens.access_token))
             }
+            Err(AppError::Api { error }) if let ErrorCode::AuthInvalidToken = error.code => {
+                tracing::warn!("AuthInvalidToken error during refresh");
+                self.emit(AuthStatus::Unauthenticated);
+                Ok(None)
+            }
             Err(AppError::Network { message }) => {
                 tracing::warn!(%message, "Network error during refresh");
                 Err(TokenProviderError::Network { message })
             }
             Err(err) => {
                 tracing::error!(%err, "Failed to refresh token");
-                {
-                    let mut tokens = self.tokens.write().await;
-                    *tokens = None;
-                }
-                self.emit(AuthEventStatus::Unauthenticated);
-                Ok(None)
+                Err(TokenProviderError::Internal { message: err.to_string() })
             }
         }
     }
-
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<TokenPair, AppError> {
         let new_tokens = self
@@ -213,13 +216,13 @@ impl AuthManager {
 
     async fn fetch_and_emit_user(&self) -> Result<(), AppError> {
         tracing::trace!("Fetching userinfo");
-        self.emit(AuthEventStatus::LoadingUser);
+        self.emit(AuthStatus::LoadingUser);
 
         let user = self.api().get::<UserPrivate>("/users/@me").await?;
         *self.user.write().await = Some(user.clone());
 
         tracing::info!(user_id = %user.id, username = %user.username, "User info fetched");
-        self.emit(AuthEventStatus::Authenticated { user });
+        self.emit(AuthStatus::Authenticated { user });
 
         Ok(())
     }
@@ -228,7 +231,7 @@ impl AuthManager {
         self.app_handle.state::<ApiClient>()
     }
 
-    fn emit(&self, status: AuthEventStatus) {
+    fn emit(&self, status: AuthStatus) {
         let _ = self
             .app_handle
             .emit("auth:status-changed", status);
@@ -239,6 +242,6 @@ impl AuthManager {
         self.token_store.delete_tokens().ok();
         *self.tokens.write().await = None;
         *self.user.write().await = None;
-        self.emit(AuthEventStatus::Unauthenticated);
+        self.emit(AuthStatus::Unauthenticated);
     }
 }

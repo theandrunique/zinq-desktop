@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { MediaGrid } from "@/components/MediaGrid";
-  import { Button } from "@/components/ui";
-  import { imageSets } from "@/stories/media-grid-data";
+  import { MediaGrid } from "@/lib/components/MediaGrid";
+  import { Button } from "@/lib/components/ui";
+  import { imageSets } from "@/lib/stories/media-grid-data";
 </script>
 
 <svelte:head>

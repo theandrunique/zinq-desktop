@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::api_client::{ClientError, TokenProviderError};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy,  Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrorCode {
     AuthInvalidCredentials,
@@ -40,10 +40,10 @@ pub struct ApiError {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(tag = "kind", rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum AppError {
     Network { message: String },
-    Api { #[serde(flatten)] error: ApiError },
+    Api { error: ApiError },
     Internal { message: String },
 }
 

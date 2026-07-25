@@ -1,14 +1,6 @@
 <script lang="ts">
   import { authStore } from "@/lib/stores/auth-store.svelte";
-  import { Button } from "@/components/ui";
-
-  function handleLogout() {
-    authStore.logout();
-  }
-
-  // $effect(() => {
-  //   zinqStore.init();
-  // });
+  import { Button } from "@/lib/components/ui";
 </script>
 
 <div class="flex h-screen flex-col p-4">
@@ -18,7 +10,7 @@
         <div class="text-sm text-(--color-text-muted)">
           {JSON.stringify(authStore.status.user)}
         </div>
-        <Button variant="secondary" onclick={handleLogout}>Logout</Button>
+        <Button variant="secondary" onclick={() => authStore.logout()}>Logout</Button>
       </div>
     {/if}
   </div>

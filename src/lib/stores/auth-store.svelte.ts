@@ -1,20 +1,21 @@
-import type { TauriAppError, User } from "@/types";
+import type { AppError, User } from "@/lib/types";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type AuthEventStatus =
+export type AuthStatus =
   | { type: "initializing" }
   | { type: "loading_user" }
-  | { type: "authenticated", user: User }
+  | { type: "authenticated"; user: User }
   | { type: "unauthenticated" }
-  | { type: "network_error" };
+  | { type: "network_error" }
+  | { type: "server_error"; message: string };
 
 function createAuthStore() {
-  let status = $state<AuthEventStatus>({ type: "initializing" });
-  let error = $state<TauriAppError | null>(null);
+  let status = $state<AuthStatus>({ type: "initializing" });
+  let error = $state<AppError | null>(null);
 
-  listen<AuthEventStatus>("auth:status-changed", (event) => {
-    console.log("Event 'auth:status-changed' is called", event.payload)
+  listen<AuthStatus>("auth:status-changed", (event) => {
+    console.log("Event 'auth:status-changed' is called", event.payload);
     status = event.payload;
     error = null;
   });
@@ -22,7 +23,7 @@ function createAuthStore() {
   function initAuth() {
     invoke("auth_init").catch((e) => {
       console.error("auth_init failed", e);
-      error = e as TauriAppError;
+      error = e as AppError;
     });
   }
 
@@ -32,7 +33,7 @@ function createAuthStore() {
       await invoke("auth_login", { username, password });
       return true;
     } catch (e) {
-      error = e as TauriAppError;
+      error = e as AppError;
       return false;
     }
   }
@@ -48,7 +49,7 @@ function createAuthStore() {
       await invoke("auth_register", { username, email, globalName: global_name, password });
       return true;
     } catch (e) {
-      error = e as TauriAppError;
+      error = e as AppError;
       return false;
     }
   }
@@ -57,7 +58,7 @@ function createAuthStore() {
     try {
       await invoke("auth_logout");
     } catch (e) {
-      error = e as TauriAppError;
+      error = e as AppError;
       console.error("logout failed", e);
     }
   }
