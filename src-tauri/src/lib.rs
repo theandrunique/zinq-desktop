@@ -5,13 +5,11 @@ mod errors;
 mod logging;
 mod schemas;
 mod zinq;
-mod application;
+mod _application;
 
 use api_client::ApiClient;
 use tauri::Manager;
 
-use crate::application::app_state::{AppState, init_app_state};
-use crate::application::network_service::NetworkService;
 use crate::auth::manager::AuthManager;
 use crate::zinq::manager::ZinqManager;
 
@@ -38,10 +36,6 @@ pub fn run() {
                 pool
             });
 
-            let network_service = NetworkService::new(app.handle().clone(), "http://localhost:8000/ping");
-            network_service.start();
-            let app_state = init_app_state();
-
             let api_client = ApiClient::new("http://localhost:8000".into());
             let auth = AuthManager::new(app.handle().clone());
 
@@ -58,7 +52,6 @@ pub fn run() {
             app.manage(api_client);
             app.manage(auth);
             app.manage(zinq);
-            app.manage(app_state);
 
             Ok(())
         })

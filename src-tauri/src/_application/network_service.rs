@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{Instant, sleep};
 
-use crate::{api_client::ApiClient, application::app_state::{AppState, NetworkState}};
+use crate::{api_client::ApiClient, _application::app_state::{AppState, NetworkState}};
 
 #[derive(Deserialize)]
 pub struct PingResponse {
