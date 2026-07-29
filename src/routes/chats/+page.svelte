@@ -1,6 +1,11 @@
 <script lang="ts">
   import { authStore } from "@/lib/stores/auth-store.svelte";
   import { Button } from "@/lib/components/ui";
+  import { zinqStore } from "@/lib/stores/zinq-store.svelte";
+
+  $effect(() => {
+    zinqStore.init();
+  })
 </script>
 
 <div class="flex h-screen flex-col p-4">

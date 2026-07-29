@@ -18,7 +18,7 @@ impl EventProcessor {
     }
 
     pub async fn process_event(&self, event: &EventLog) -> Result<(), sqlx::Error> {
-        tracing::debug!("Processing event: {}", event.event_id);
+        tracing::trace!("Processing event: {}", event.event_id);
 
         match &event.event_type {
             EventLogType::MessageCreate { message } => {
